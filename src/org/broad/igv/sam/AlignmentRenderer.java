@@ -18,7 +18,6 @@ import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.feature.genome.GenomeManager;
 import org.broad.igv.renderer.ContinuousColorScale;
 import org.broad.igv.renderer.GraphicUtils;
-import org.broad.igv.sam.AlignmentTrack.ColorOption;
 import org.broad.igv.sam.AlignmentTrack.RenderOptions;
 import org.broad.igv.sam.AlignmentTrack.ShadeBasesOption;
 import org.broad.igv.sam.BisulfiteBaseInfo.DisplayStatus;
@@ -397,7 +396,7 @@ public class AlignmentRenderer implements FeatureRenderer {
         Color alignmentColor1;
         Color alignmentColor2 = null;
         if (renderOptions.isPairedArcView()) {
-            renderOptions.setColorOption(ColorOption.INSERT_SIZE);
+            renderOptions.setColorOption(AlignmentTrack.ColorOption.INSERT_SIZE);
             alignmentColor1 = getAlignmentColor(pair, renderOptions);
             alignmentColor2 = alignmentColor1;
         } else {
@@ -688,11 +687,11 @@ public class AlignmentRenderer implements FeatureRenderer {
 
 
         ShadeBasesOption shadeBasesOption = renderOptions.shadeBasesOption;
-        ColorOption colorOption = renderOptions.getColorOption();
+        AlignmentTrack.ColorOption colorOption = renderOptions.getColorOption();
 
         // Disable showAllBases in bisulfite mode
         boolean showAllBases = renderOptions.showAllBases &&
-                !(colorOption == ColorOption.BISULFITE || colorOption == ColorOption.NOMESEQ);
+                !(colorOption == AlignmentTrack.ColorOption.BISULFITE || colorOption == AlignmentTrack.ColorOption.NOMESEQ);
 
         double locScale = context.getScale();
         double origin = context.getOrigin();
@@ -930,7 +929,7 @@ public class AlignmentRenderer implements FeatureRenderer {
 
         Color defaultColor = alignment.getDefaultColor();
         Color c = defaultColor;
-        ColorOption colorOption = renderOptions.getColorOption();
+        AlignmentTrack.ColorOption colorOption = renderOptions.getColorOption();
         switch (colorOption) {
             case BISULFITE:
                 // Just a simple forward/reverse strand color scheme that won't clash with the
@@ -950,33 +949,44 @@ public class AlignmentRenderer implements FeatureRenderer {
             case UNEXPECTED_PAIR:
             case PAIR_ORIENTATION:
                 c = getOrientationColor(alignment, getPEStats(alignment, renderOptions));
-                if (colorOption == ColorOption.PAIR_ORIENTATION || c != defaultColor) {
+                if (colorOption == AlignmentTrack.ColorOption.PAIR_ORIENTATION || c != defaultColor) {
                     break;
                 }
             case INSERT_SIZE:
+            case INSERT_SIZE_2:
                 boolean isPairedAlignment = alignment instanceof PairedAlignment;
                 if ((alignment.isPaired() && alignment.getMate().isMapped()) || isPairedAlignment) {
                     boolean sameChr = isPairedAlignment || alignment.getMate().getChr().equals(alignment.getChr());
                     if (sameChr) {
-                        int readDistance = Math.abs(alignment.getInferredInsertSize());
-                        if (readDistance != 0) {
+                        int templateLength = Math.abs(alignment.getInferredInsertSize());
+                        if (templateLength != 0) {
+                            if (colorOption == AlignmentTrack.ColorOption.INSERT_SIZE_2) {
+                                c = renderOptions.getTemplateColorScale().getColor(templateLength);
 
-                            int minThreshold = renderOptions.getMinInsertSize();
-                            int maxThreshold = renderOptions.getMaxInsertSize();
-                            PEStats peStats = getPEStats(alignment, renderOptions);
-                            if (renderOptions.isComputeIsizes() && peStats != null) {
-                                minThreshold = peStats.getMinThreshold();
-                                maxThreshold = peStats.getMaxThreshold();
-                            }
 
-                            if (readDistance < minThreshold) {
-                                c = smallISizeColor;
-                            } else if (readDistance > maxThreshold) {
-                                c = largeISizeColor;
+                            } else {
+                                int minThreshold = renderOptions.getMinInsertSize();
+                                int maxThreshold = renderOptions.getMaxInsertSize();
+                                PEStats peStats = getPEStats(alignment, renderOptions);
+                                if (renderOptions.isComputeIsizes() && peStats != null) {
+                                    minThreshold = peStats.getMinThreshold();
+                                    maxThreshold = peStats.getMaxThreshold();
+                                }
+
+                                if (templateLength < minThreshold) {
+                                    c = smallISizeColor;
+                                } else if (templateLength > maxThreshold) {
+                                    c = largeISizeColor;
+                                }
                             }
                         }
                         //return renderOptions.insertSizeColorScale.getColor(readDistance);
                     } else {
+                        if(colorOption == AlignmentTrack.ColorOption.INSERT_SIZE_2) {
+                            ColorPalette pallete = ColorUtilities.getPalette("Set 3");
+                            Color [] colors = pallete.getColors();
+                            return colors[5];
+                        }
                         c = ChromosomeColors.getColor(alignment.getMate().getChr());
                         if (c == null) {
                             c = Color.black;
@@ -1211,4 +1221,5 @@ public class AlignmentRenderer implements FeatureRenderer {
         arcsByStart.clear();
         arcsByEnd.clear();
     }
+
 }

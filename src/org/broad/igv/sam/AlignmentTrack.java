@@ -36,6 +36,7 @@ import org.broad.igv.tdf.TDFReader;
 import org.broad.igv.track.*;
 import org.broad.igv.ui.IGV;
 import org.broad.igv.ui.InsertSizeSettingsDialog;
+import org.broad.igv.ui.color.ColorPalette;
 import org.broad.igv.ui.color.ColorUtilities;
 import org.broad.igv.ui.event.AlignmentTrackEvent;
 import org.broad.igv.ui.event.AlignmentTrackEventListener;
@@ -81,32 +82,27 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     static final int DOWNAMPLED_ROW_HEIGHT = 3;
     static final int DS_MARGIN_2 = 5;
 
-    public enum ShadeBasesOption {
+    public static enum ShadeBasesOption {
         NONE, QUALITY, FLOW_SIGNAL_DEVIATION_READ, FLOW_SIGNAL_DEVIATION_REFERENCE
     }
 
-    public enum ExperimentType {
+    public static enum ExperimentType {
         RNA, BISULFITE, OTHER
     }
 
-    public enum ColorOption {
-        INSERT_SIZE, READ_STRAND, FIRST_OF_PAIR_STRAND, PAIR_ORIENTATION, SAMPLE, READ_GROUP, BISULFITE, NOMESEQ,
-        TAG, NONE, UNEXPECTED_PAIR
-    }
-
-    public enum SortOption {
+    public static enum SortOption {
         START, STRAND, NUCELOTIDE, QUALITY, SAMPLE, READ_GROUP, INSERT_SIZE, FIRST_OF_PAIR_STRAND, MATE_CHR, TAG;
     }
 
-    public enum GroupOption {
+    public static enum GroupOption {
         STRAND, SAMPLE, READ_GROUP, FIRST_OF_PAIR_STRAND, TAG, PAIR_ORIENTATION, MATE_CHROMOSOME, NONE
     }
 
-    public enum BisulfiteContext {
+    public static enum BisulfiteContext {
         CG, CHH, CHG, HCG, GCH, WCG
     }
 
-    enum OrientationType {
+    public static enum OrientationType {
         RR, LL, RL, LR, UNKNOWN
     }
 
@@ -985,6 +981,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         @XmlAttribute private String groupByTag;
         @XmlAttribute private String sortByTag;
 
+        private InsertSizeColorScale insertSizeColorScale;
+
         RenderOptions() {
             PreferenceManager prefs = PreferenceManager.getInstance();
 
@@ -1014,6 +1012,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             sortByTag = prefs.get(PreferenceManager.SAM_SORT_BY_TAG);
             groupByTag = prefs.get(PreferenceManager.SAM_GROUP_BY_TAG);
 
+            insertSizeColorScale = new InsertSizeColorScale();
             //updateColorScale();
 
             peStats = new HashMap<String, PEStats>();
@@ -1129,6 +1128,45 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         public GroupOption getGroupByOption() {
             return groupByOption;
         }
+
+        public InsertSizeColorScale getInsertSizeColorScale() {
+            return insertSizeColorScale;
+        }
+    }
+
+    public static class InsertSizeColorScale {
+
+        Color [] colors;
+        int [] thresholds;
+
+        public InsertSizeColorScale() {
+            ColorPalette pallete = ColorUtilities.getPalette("Set 3");
+            Color [] pc = pallete.getColors();   // TODO -- verify we have enough colors
+            colors = new Color[] {AlignmentRenderer.grey1, pc[0], pc[1], pc[2], pc[3], pc[4], pc[5]};
+            thresholds = new int[] {0, 1000, 10000, 50000, 500000};
+
+        }
+
+        public Color getColor(int insertSize) {
+            if(insertSize < thresholds[0]) {
+                return AlignmentRenderer.grey1;
+            }
+            else {
+                for(int i=0; i<thresholds.length ; i++) {
+                    if(insertSize < thresholds[i]) {
+                        return colors[i];
+                    }
+                }
+            }
+            return colors[colors.length - 1];
+        }
+
+    }
+
+    public static enum ColorOption {
+        INSERT_SIZE, INSERT_SIZE_2, READ_STRAND, FIRST_OF_PAIR_STRAND, PAIR_ORIENTATION, SAMPLE, READ_GROUP, BISULFITE, NOMESEQ,
+        TAG, NONE, UNEXPECTED_PAIR
+
     }
 
     class PopupMenu extends IGVPopupMenu {
@@ -1422,7 +1460,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 mappings.put("insert size", ColorOption.INSERT_SIZE);
                 mappings.put("pair orientation", ColorOption.PAIR_ORIENTATION);
                 mappings.put("insert size and pair orientation", ColorOption.UNEXPECTED_PAIR);
-
+                mappings.put("insert size (2)", ColorOption.INSERT_SIZE_2);
             }
 
             mappings.put("read strand", ColorOption.READ_STRAND);
@@ -1851,6 +1889,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             final double location = frame.getChromosomePosition(e.getX());
             final Alignment alignment = getAlignmentAt(location, e.getY(), frame);
             if(alignment == null) return;
+
             item.addActionListener(new ActionListener() {
 
                 public void actionPerformed(ActionEvent aEvt) {
@@ -1871,7 +1910,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 }
             });
 
-            String seq = alignment.getReadSequence();
+
+            String seq = alignment == null ? null : alignment.getReadSequence();
             item.setEnabled(seq != null && seq.length() > 10);
             add(item);
         }
