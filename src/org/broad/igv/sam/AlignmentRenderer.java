@@ -982,14 +982,13 @@ public class AlignmentRenderer implements FeatureRenderer {
                         }
                         //return renderOptions.insertSizeColorScale.getColor(readDistance);
                     } else {
-                        if(colorOption == AlignmentTrack.ColorOption.INSERT_SIZE_2) {
-                            ColorPalette pallete = ColorUtilities.getPalette("Set 3");
-                            Color [] colors = pallete.getColors();
-                            return colors[5];
-                        }
-                        c = ChromosomeColors.getColor(alignment.getMate().getChr());
-                        if (c == null) {
-                            c = Color.black;
+                        if (colorOption == AlignmentTrack.ColorOption.INSERT_SIZE_2) {
+                            c = renderOptions.getInsertSizeColorScale().getInterChrColor();
+                        } else {
+                            c = ChromosomeColors.getColor(alignment.getMate().getChr());
+                            if (c == null) {
+                                c = Color.black;
+                            }
                         }
                     }
                 }

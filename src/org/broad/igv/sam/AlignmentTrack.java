@@ -1168,12 +1168,14 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     public static class InsertSizeColorScale {
 
         Color[] colors;
+        Color interChrColor;
         int[] thresholds;
 
         public InsertSizeColorScale() {
             ColorPalette pallete = ColorUtilities.getPalette("Ylorrd 9 Seq");
             Color[] pc = pallete.getColors();
-            colors = new Color[]{AlignmentRenderer.grey1, pc[1], pc[4], pc[5], pc[6], pc[7], pc[8]};
+            interChrColor = pc[8];
+            colors = new Color[]{AlignmentRenderer.grey1, pc[1], pc[3], pc[4], pc[5], pc[6], pc[7]};
             thresholds = new int[]{0, 1000, 10000, 50000, 500000};
         }
 
@@ -1188,6 +1190,10 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                 }
             }
             return colors[colors.length - 1];
+        }
+
+        public Color getInterChrColor() {
+            return interChrColor;
         }
 
     }
