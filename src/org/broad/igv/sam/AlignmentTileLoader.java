@@ -17,6 +17,7 @@ import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.SpliceJunctionFeature;
+import org.broad.igv.sam.reader.AlignmentFilter;
 import org.broad.igv.sam.reader.AlignmentReader;
 import org.broad.igv.sam.reader.ReadGroupFilter;
 import org.broad.igv.ui.IGV;
@@ -92,7 +93,8 @@ public class AlignmentTileLoader {
                            boolean showSpliceJunctions,
                            AlignmentDataManager.DownsampleOptions downsampleOptions,
                            Map<String, PEStats> peStats,
-                           AlignmentTrack.BisulfiteContext bisulfiteContext) {
+                           AlignmentTrack.BisulfiteContext bisulfiteContext,
+                           AlignmentFilter filter) {
 
         AlignmentTile t = new AlignmentTile(start, end, showSpliceJunctions, downsampleOptions, bisulfiteContext);
 
@@ -102,12 +104,6 @@ public class AlignmentTileLoader {
             return t;
         }
 
-        final PreferenceManager prefMgr = PreferenceManager.getInstance();
-        boolean filterFailedReads = prefMgr.getAsBoolean(PreferenceManager.SAM_FILTER_FAILED_READS);
-        boolean filterSecondaryAlignments = prefMgr.getAsBoolean(PreferenceManager.SAM_FILTER_SECONDARY_ALIGNMENTS);
-        ReadGroupFilter filter = ReadGroupFilter.getFilter();
-        boolean showDuplicates = prefMgr.getAsBoolean(PreferenceManager.SAM_SHOW_DUPLICATES);
-        int qualityThreshold = prefMgr.getAsInt(PreferenceManager.SAM_QUALITY_THRESHOLD);
 
         CloseableIterator<Alignment> iter = null;
 
@@ -162,11 +158,7 @@ public class AlignmentTileLoader {
                 }
 
 
-                if (!record.isMapped() || (!showDuplicates && record.isDuplicate()) ||
-                        (filterFailedReads && record.isVendorFailedRead()) ||
-                        (filterSecondaryAlignments && !record.isPrimary()) ||
-                        record.getMappingQuality() < qualityThreshold ||
-                        (filter != null && filter.filterAlignment(record))) {
+                if (filter != null && filter.filterAlignment(record)) {
                     continue;
                 }
 
@@ -199,6 +191,8 @@ public class AlignmentTileLoader {
             // End iteration over alignments
 
             // Compute peStats
+            final PreferenceManager prefMgr = PreferenceManager.getInstance();
+
             if (peStats != null) {
                 // TODO -- something smarter re the percentiles.  For small samples these will revert to min and max
                 double minPercentile = prefMgr.getAsFloat(PreferenceManager.SAM_MIN_INSERT_SIZE_PERCENTILE);

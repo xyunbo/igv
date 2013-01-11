@@ -28,6 +28,7 @@ import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.goby.GobyCountArchiveDataSource;
 import org.broad.igv.lists.GeneList;
 import org.broad.igv.renderer.GraphicUtils;
+import org.broad.igv.sam.reader.AlignmentFilter;
 import org.broad.igv.session.IGVSessionReader;
 import org.broad.igv.session.Session;
 import org.broad.igv.session.SubtlyImportant;
@@ -221,16 +222,16 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         this.coverageTrack.setRenderOptions(this.renderOptions);
     }
 
-    @XmlElement(name=RenderOptions.NAME)
-    private void setRenderOptions(RenderOptions renderOptions){
+    @XmlElement(name = RenderOptions.NAME)
+    private void setRenderOptions(RenderOptions renderOptions) {
         this.renderOptions = renderOptions;
-        if(this.coverageTrack != null){
+        if (this.coverageTrack != null) {
             this.coverageTrack.setRenderOptions(this.renderOptions);
         }
     }
 
     @SubtlyImportant
-    private RenderOptions getRenderOptions(){
+    private RenderOptions getRenderOptions() {
         return this.renderOptions;
     }
 
@@ -437,9 +438,10 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
     /**
      * Visually regroup alignments by the provided {@code GroupOption}.
-     * @see AlignmentDataManager#repackAlignments(org.broad.igv.ui.panel.ReferenceFrame, org.broad.igv.sam.AlignmentTrack.RenderOptions)
+     *
      * @param option
      * @param referenceFrame
+     * @see AlignmentDataManager#repackAlignments(org.broad.igv.ui.panel.ReferenceFrame, org.broad.igv.sam.AlignmentTrack.RenderOptions)
      */
     public void groupAlignments(GroupOption option, ReferenceFrame referenceFrame) {
         if (renderOptions.groupByOption != option) {
@@ -702,12 +704,12 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
     //Public only for testing
     @XmlAttribute
-    public boolean isShowSpliceJunctions(){
+    public boolean isShowSpliceJunctions() {
         return dataManager.isShowSpliceJunctions();
     }
 
     @SubtlyImportant
-    private void setShowSpliceJunctions(boolean showSpliceJunctions){
+    private void setShowSpliceJunctions(boolean showSpliceJunctions) {
         dataManager.setShowSpliceJunctions(showSpliceJunctions);
     }
 
@@ -887,17 +889,17 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         //with Track tag, now it's a sub element
         boolean hasRenderSubTag = false;
         try {
-            if(node.hasChildNodes()){
+            if (node.hasChildNodes()) {
                 NodeList list = node.getChildNodes();
-                for(int ii=0; ii < list.getLength(); ii++){
+                for (int ii = 0; ii < list.getLength(); ii++) {
                     Node item = list.item(ii);
-                    if(item.getNodeName().equals(RenderOptions.NAME)){
+                    if (item.getNodeName().equals(RenderOptions.NAME)) {
                         hasRenderSubTag = true;
                         break;
                     }
                 }
             }
-            if(hasRenderSubTag) return;
+            if (hasRenderSubTag) return;
             RenderOptions ro = IGVSessionReader.getJAXBContext().createUnmarshaller().unmarshal(node, RenderOptions.class).getValue();
 
             String shadeBasesKey = "shadeBases";
@@ -955,31 +957,51 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
     @XmlType(name = RenderOptions.NAME)
     @XmlAccessorType(XmlAccessType.NONE)
-    public static class RenderOptions{
+    public static class RenderOptions {
 
         public static final String NAME = "RenderOptions";
 
-        @XmlAttribute ShadeBasesOption shadeBasesOption;
-        @XmlAttribute boolean shadeCenters;
-        @XmlAttribute boolean flagUnmappedPairs;
-        @XmlAttribute boolean showAllBases;
+        @XmlAttribute
+        ShadeBasesOption shadeBasesOption;
+        @XmlAttribute
+        boolean shadeCenters;
+        @XmlAttribute
+        boolean flagUnmappedPairs;
+        @XmlAttribute
+        boolean showAllBases;
+        @XmlAttribute
         boolean showMismatches = true;
+        @XmlAttribute
         private boolean computeIsizes;
-        @XmlAttribute private int minInsertSize;
-        @XmlAttribute private int maxInsertSize;
+        @XmlAttribute
+        private int minInsertSize;
+        @XmlAttribute
+        private int maxInsertSize;
+        @XmlAttribute
         private double minInsertSizePercentile;
+        @XmlAttribute
         private double maxInsertSizePercentile;
-        @XmlAttribute private ColorOption colorOption;
-        @XmlAttribute GroupOption groupByOption = null;
+        @XmlAttribute
+        private ColorOption colorOption;
+        @XmlAttribute
+        GroupOption groupByOption = null;
         BisulfiteContext bisulfiteContext;
         //ContinuousColorScale insertSizeColorScale;
+        @XmlAttribute
         private boolean viewPairs = false;
+        @XmlAttribute
         private boolean pairedArcView = false;
+        @XmlAttribute
         public boolean flagZeroQualityAlignments = true;
         Map<String, PEStats> peStats;
-        @XmlAttribute private String colorByTag;
-        @XmlAttribute private String groupByTag;
-        @XmlAttribute private String sortByTag;
+        @XmlAttribute
+        private String colorByTag;
+        @XmlAttribute
+        private String groupByTag;
+        @XmlAttribute
+        private String sortByTag;
+
+        private AlignmentFilter filter;
 
         private InsertSizeColorScale insertSizeColorScale;
 
@@ -1013,7 +1035,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             groupByTag = prefs.get(PreferenceManager.SAM_GROUP_BY_TAG);
 
             insertSizeColorScale = new InsertSizeColorScale();
-            //updateColorScale();
+            filter = new GeneralAlignmentFilter();
 
             peStats = new HashMap<String, PEStats>();
         }
@@ -1132,28 +1154,35 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         public InsertSizeColorScale getInsertSizeColorScale() {
             return insertSizeColorScale;
         }
+
+        public AlignmentFilter getFilter() {
+            return filter;
+        }
+
+        public void setInsertSizeFilter(int minIsize) {
+            ((GeneralAlignmentFilter) filter).minInsertSize = minIsize;
+        }
     }
+
 
     public static class InsertSizeColorScale {
 
-        Color [] colors;
-        int [] thresholds;
+        Color[] colors;
+        int[] thresholds;
 
         public InsertSizeColorScale() {
-            ColorPalette pallete = ColorUtilities.getPalette("Set 3");
-            Color [] pc = pallete.getColors();   // TODO -- verify we have enough colors
-            colors = new Color[] {AlignmentRenderer.grey1, pc[0], pc[1], pc[2], pc[3], pc[4], pc[5]};
-            thresholds = new int[] {0, 1000, 10000, 50000, 500000};
-
+            ColorPalette pallete = ColorUtilities.getPalette("Ylorrd 9 Seq");
+            Color[] pc = pallete.getColors();
+            colors = new Color[]{AlignmentRenderer.grey1, pc[1], pc[4], pc[5], pc[6], pc[7], pc[8]};
+            thresholds = new int[]{0, 1000, 10000, 50000, 500000};
         }
 
         public Color getColor(int insertSize) {
-            if(insertSize < thresholds[0]) {
+            if (insertSize < thresholds[0]) {
                 return AlignmentRenderer.grey1;
-            }
-            else {
-                for(int i=0; i<thresholds.length ; i++) {
-                    if(insertSize < thresholds[i]) {
+            } else {
+                for (int i = 0; i < thresholds.length; i++) {
+                    if (insertSize < thresholds[i]) {
                         return colors[i];
                     }
                 }
@@ -1196,6 +1225,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             addGroupMenuItem();
             addSortMenuItem();
             addColorByMenuItem();
+            addFilterMenuItem();
 
             addSeparator();
             addShadeBaseByMenuItem();
@@ -1500,6 +1530,41 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
 
             add(colorMenu);
 
+        }
+
+
+        public void addFilterMenuItem() {//ReferenceFrame frame) {
+            // Change track height by attribute
+            JMenu filterMenu = new JMenu("Filter alignments by");
+
+            JMenuItem filterByIsizeItem = new JMenuItem("Insert size...");
+
+            filterByIsizeItem.addActionListener(new ActionListener() {
+
+                public void actionPerformed(ActionEvent aEvt) {
+
+                    int defaultSize = PreferenceManager.getInstance().getAsInt(PreferenceManager.SAM_MIN_INSERT_SIZE_FILTER);
+                    String size = MessageUtils.showInputDialog("Minimum insert size: ", String.valueOf(defaultSize));
+
+                    try {
+                        int minIsize = Integer.parseInt(size);
+                        if (minIsize != defaultSize) {
+                            PreferenceManager.getInstance().put(PreferenceManager.SAM_MIN_INSERT_SIZE_FILTER, size);
+                            renderOptions.setInsertSizeFilter(minIsize);
+                            IGV.getInstance().notifyAlignmentTrackEvent(this, AlignmentTrackEvent.Type.RELOAD);
+                            IGV.getInstance().doRefresh();
+                        }
+                    } catch (NumberFormatException e) {
+                        MessageUtils.showMessage("Insert size must be an integer");
+                    }
+
+
+                }
+            });
+
+            filterMenu.add(filterByIsizeItem);
+
+            add(filterMenu);
         }
 
         public void addPackMenuItem() {
@@ -1888,7 +1953,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             final ReferenceFrame frame = te.getFrame();
             final double location = frame.getChromosomePosition(e.getX());
             final Alignment alignment = getAlignmentAt(location, e.getY(), frame);
-            if(alignment == null) return;
+            if (alignment == null) return;
 
             item.addActionListener(new ActionListener() {
 
@@ -1896,7 +1961,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
                     if (frame == null) {
                         item.setEnabled(false);
                     } else {
-                         String sequence;
+                        String sequence;
                         if (alignment != null) {
                             sequence = alignment.getReadSequence();
                         } else {
@@ -2029,7 +2094,7 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
     }
 
     @SubtlyImportant
-    private static AlignmentTrack getNextTrack(){
+    private static AlignmentTrack getNextTrack() {
         return (AlignmentTrack) IGVSessionReader.getNextTrack();
     }
 }

@@ -168,7 +168,7 @@ public class CoverageTrack extends AbstractTrack {
         float maxRange = PreferenceManager.getInstance().getAsFloat(PreferenceManager.SAM_MAX_VISIBLE_RANGE);
         float minVisibleScale = (maxRange * 1000) / 700;
 
-        if (context.getScale() < minVisibleScale) {
+        if (!context.getChr().equals(Globals.CHR_ALL) && context.getScale() < minVisibleScale) {
             //
             Collection<AlignmentInterval> intervals = null;
             if (dataManager != null) {

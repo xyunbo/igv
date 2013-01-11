@@ -422,7 +422,7 @@ public class AlignmentDataManager {
 
 
         AlignmentTileLoader.AlignmentTile t = reader.loadTile(sequence, start, end, showSpliceJunctions,
-                downsampleOptions, peStats, bisulfiteContext);
+                downsampleOptions, peStats, bisulfiteContext, renderOptions.getFilter());
 
         List<Alignment> alignments = t.getAlignments();
 

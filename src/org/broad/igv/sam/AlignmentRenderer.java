@@ -961,7 +961,7 @@ public class AlignmentRenderer implements FeatureRenderer {
                         int templateLength = Math.abs(alignment.getInferredInsertSize());
                         if (templateLength != 0) {
                             if (colorOption == AlignmentTrack.ColorOption.INSERT_SIZE_2) {
-                                c = renderOptions.getTemplateColorScale().getColor(templateLength);
+                                c = renderOptions.getInsertSizeColorScale().getColor(templateLength);
 
 
                             } else {

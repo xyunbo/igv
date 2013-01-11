@@ -38,7 +38,7 @@ import java.util.Set;
  * To change this template use File | Settings | File Templates.
  */
 
-public class ReadGroupFilter {
+public class ReadGroupFilter implements AlignmentFilter {
 
 
     private Set<String> filteredReadGroups;
@@ -47,6 +47,7 @@ public class ReadGroupFilter {
         this.filteredReadGroups = filteredReadGroups;
     }
 
+    @Override
     public boolean filterAlignment(Alignment alignment) {
         return filteredReadGroups.contains(alignment.getReadGroup());
     }
