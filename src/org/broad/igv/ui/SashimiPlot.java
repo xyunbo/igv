@@ -121,7 +121,7 @@ public class SashimiPlot extends JFrame {
             @Override
             public void windowClosed(WindowEvent windowEvent) {
                 frame.getEventBus().unregister(SashimiPlot.this);
-                if(dataManager != null) dataManager.getEventBus().unregister(SashimiPlot.this);
+                if(dataManager != null) dataManager.unregsiterClient(SashimiPlot.this);
             }
         });
 
@@ -206,7 +206,7 @@ public class SashimiPlot extends JFrame {
     private void setDataManager(TrackComponent<SpliceJunctionFinderTrack> spliceJunctionTrackComponent, AlignmentDataManager dataManager, int minJunctionCoverage) {
         this.dataManager = dataManager;
         getRenderer(spliceJunctionTrackComponent.track).setDataManager(dataManager);
-        dataManager.getEventBus().register(this);
+        dataManager.registerClient(this);
         dataManager.getSpliceJunctionHelper().setMinJunctionCoverage(minJunctionCoverage);
     }
 

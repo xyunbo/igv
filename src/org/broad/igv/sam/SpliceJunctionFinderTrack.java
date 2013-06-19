@@ -67,6 +67,9 @@ public class SpliceJunctionFinderTrack extends FeatureTrack implements Alignment
         this.dataManager = dataManager;
         prefs = PreferenceManager.getInstance();
         this.ignoreStrand = ignoreStrand;
+
+        dataManager.registerClient(this);
+
         // Register track
         IGV.getInstance().addAlignmentTrackEventListener(this);
     }
@@ -78,6 +81,12 @@ public class SpliceJunctionFinderTrack extends FeatureTrack implements Alignment
         return context.getScale() < minVisibleScale;
     }
 
+
+    @Override
+    public void dispose() {
+        super.dispose();
+        dataManager.unregsiterClient(this);
+    }
 
     /**
      * Override to return a specialized popup menu

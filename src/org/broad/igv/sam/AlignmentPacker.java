@@ -50,9 +50,7 @@ public class AlignmentPacker {
      * @param renderOptions
      */
     public LinkedHashMap<String, List<AlignmentInterval.Row>> packAlignments(
-            Iterator<Alignment> iter,
-            int end,
-            AlignmentTrack.RenderOptions renderOptions) {
+            Iterator<Alignment> iter, int end, AlignmentTrack.RenderOptions renderOptions) {
 
         if(renderOptions == null) renderOptions = new AlignmentTrack.RenderOptions();
 

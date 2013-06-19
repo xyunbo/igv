@@ -126,7 +126,7 @@ public class CoverageTrack extends AbstractTrack {
 
     public void setDataManager(AlignmentDataManager dataManager) {
         this.dataManager = dataManager;
-        this.dataManager.getEventBus().register(this);
+        this.dataManager.registerClient(this);
     }
 
     public void setDataSource(CoverageDataSource dataSource) {
@@ -136,6 +136,13 @@ public class CoverageTrack extends AbstractTrack {
 
     }
 
+    @Override
+    public void dispose() {
+        super.dispose();
+        if(dataManager != null) {
+            dataManager.unregsiterClient(this);
+        }
+    }
 
     @Override
     public void setDataRange(DataRange axisDefinition) {

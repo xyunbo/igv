@@ -16,6 +16,7 @@
 package org.broad.igv.sam;
 
 import org.apache.log4j.Logger;
+import org.broad.igv.data.Interval;
 import org.broad.igv.feature.Locus;
 import org.broad.igv.feature.Strand;
 import org.broad.igv.feature.genome.Genome;
@@ -27,7 +28,7 @@ import java.util.*;
 /**
  * @author jrobinso
  */
-public class AlignmentInterval extends Locus{
+public class AlignmentInterval extends Interval {
 
     private static Logger log = Logger.getLogger(AlignmentInterval.class);
 
@@ -35,9 +36,7 @@ public class AlignmentInterval extends Locus{
     private int maxCount = 0;
     private AlignmentCounts counts;
     private LinkedHashMap<String, List<Row>> groupedAlignmentRows;  // The alignments
-    private SpliceJunctionHelper spliceJunctionHelper;
     private List<DownsampledInterval> downsampledIntervals;
-    private AlignmentTrack.RenderOptions renderOptions;
 
     public AlignmentInterval(String chr, int start, int end,
                              LinkedHashMap<String, List<Row>> groupedAlignmentRows,
@@ -54,9 +53,7 @@ public class AlignmentInterval extends Locus{
         this.counts = counts;
         this.maxCount = counts.getMaxCount();
 
-        this.spliceJunctionHelper = spliceJunctionHelper;
         this.downsampledIntervals = downsampledIntervals;
-        this.renderOptions = renderOptions;
     }
 
     static AlignmentInterval emptyAlignmentInterval(String chr, int start, int end) {
@@ -110,9 +107,8 @@ public class AlignmentInterval extends Locus{
         return groupedAlignmentRows == null ? 0 : groupedAlignmentRows.size();
     }
 
-    public void setAlignmentRows(LinkedHashMap<String, List<Row>> alignmentRows, AlignmentTrack.RenderOptions renderOptions) {
+    public void setAlignmentRows(LinkedHashMap<String, List<Row>> alignmentRows) {
         this.groupedAlignmentRows = alignmentRows;
-        this.renderOptions = renderOptions;
     }
 
 

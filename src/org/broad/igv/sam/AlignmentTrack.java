@@ -73,6 +73,7 @@ import java.util.List;
  */
 @XmlType(factoryMethod = "getNextTrack")
 @XmlSeeAlso(AlignmentTrack.RenderOptions.class)
+
 public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEventListener {
 
     private static Logger log = Logger.getLogger(AlignmentTrack.class);
@@ -198,6 +199,8 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
         if (renderOptions.getColorOption() == ColorOption.BISULFITE) {
             setExperimentType(ExperimentType.BISULFITE);
         }
+
+        this.dataManager.registerClient(this);
 
         // Register track
         if (!Globals.isHeadless()) {
@@ -953,6 +956,14 @@ public class AlignmentTrack extends AbstractTrack implements AlignmentTrackEvent
             dataManager.repackAlignments(frame.getName(), renderOptions);
         }
         refresh();
+    }
+
+    @Override
+    public void dispose() {
+        super.dispose();
+        if(dataManager != null) {
+            dataManager.unregsiterClient(this);
+        }
     }
 
     @XmlType(name = RenderOptions.NAME)

@@ -251,11 +251,13 @@ public class FeatureCollectionSource implements FeatureSource {
                 ends[i] = starts[i] + windowSize;
             }
             float[] values = new float[nBins];
+
             List<Feature> features = featureMap.get(chr);
             if (features != null) {
                 for (Feature f : features) {
                     int startBin = f.getStart() / windowSize;
-                    int endBin = f.getEnd() / windowSize;
+                    if(startBin >= nBins) break;
+                    int endBin = Math.min(nBins-1, f.getEnd() / windowSize);
                     for (int i = startBin; i < endBin; i++) {
                         values[i] = values[i] + 1;
                         dataMax = Math.max(dataMax, values[i]);

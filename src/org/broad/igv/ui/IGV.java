@@ -2046,6 +2046,7 @@ public class IGV {
             if (t instanceof AlignmentTrackEventListener) {
                 removeAlignmentTrackEvent((AlignmentTrackEventListener) t);
             }
+            t.dispose();
         }
     }
 

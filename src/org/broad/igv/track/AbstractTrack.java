@@ -210,6 +210,11 @@ public abstract class AbstractTrack implements Track {
         return id;
     }
 
+    @Override
+    public void dispose() {
+        // Default is to do nothing
+    }
+
 
     public void setName(String name) {
         this.name = name;

@@ -51,6 +51,12 @@ public interface Track extends Persistable{
     String getId();
 
 
+    /**
+     * Free resources, unregister from event buses
+     */
+    void dispose();
+
+
     void preload(RenderContext context);
 
     /**

@@ -11,6 +11,7 @@
 package org.broad.igv.sam;
 
 import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import org.apache.log4j.Logger;
 import org.broad.igv.Globals;
 import org.broad.igv.PreferenceManager;
@@ -18,6 +19,7 @@ import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.sam.AlignmentTrack.SortOption;
 import org.broad.igv.sam.reader.AlignmentReaderFactory;
 import org.broad.igv.track.RenderContext;
+import org.broad.igv.track.Track;
 import org.broad.igv.ui.event.DataLoadedEvent;
 import org.broad.igv.ui.panel.FrameManager;
 import org.broad.igv.ui.panel.ReferenceFrame;
@@ -59,16 +61,46 @@ public class AlignmentDataManager {
     private EventBus eventBus = new EventBus();
 
 
+    /**
+     * Collection of associated tracks.  This is needed to do a sort of reference counting, which in turn is
+     * needed to unregister from event bus(s).   Feeling a lot like "c".
+     */
+    private Set<Object> tracks;
+
+
     public AlignmentDataManager(ResourceLocator locator, Genome genome) throws IOException {
         reader = new AlignmentTileLoader(AlignmentReaderFactory.getReader(locator));
         peStats = new HashMap();
-        this.spliceJunctionHelper = new SpliceJunctionHelper(new SpliceJunctionHelper.LoadOptions());
+        spliceJunctionHelper = new SpliceJunctionHelper(new SpliceJunctionHelper.LoadOptions());
+        tracks = new HashSet<Object>();
         initChrMap(genome);
+
+        FrameManager.getEventBus().register(this);
+        // TODO -- we need to unregister when all associated tracks are unloaded. Otherwise, big memory leak.
     }
 
     public void updateGenome(Genome genome) {
         chrMappings.clear();
         initChrMap(genome);
+    }
+
+    public void registerClient(Object track) {
+        tracks.add(track);
+        eventBus.register(track);
+    }
+
+    public void unregsiterClient(Object track) {
+        tracks.remove(track);
+        eventBus.unregister(track);
+        if(tracks.isEmpty()) {
+            FrameManager.getEventBus().unregister(this);
+        }
+    }
+
+    @Subscribe
+    public void handleFrameChanges(FrameManager.FrameChangeEvent event) {
+        System.out.println(event.getFrames().size());
+        // Clear un-needed alignment intervals
     }
 
     /**
@@ -216,7 +248,7 @@ public class AlignmentDataManager {
                         loadedInterval.getEnd(),
                         renderOptions);
 
-                loadedInterval.setAlignmentRows(tmp, renderOptions);
+                loadedInterval.setAlignmentRows(tmp);
         } else {
             repackAlignments(frameName, renderOptions);
         }
@@ -245,13 +277,9 @@ public class AlignmentDataManager {
                 loadedInterval.getEnd(),
                 renderOptions);
 
-        loadedInterval.setAlignmentRows(alignmentRows, renderOptions);
+        loadedInterval.setAlignmentRows(alignmentRows);
     }
 
-    public void preload(RenderContext context){
-        AlignmentTrack.RenderOptions renderOptions = getCoverageTrack() != null ? getCoverageTrack().getRenderOptions() : null;
-        preload(context, renderOptions, true);
-    }
 
     public synchronized void preload(RenderContext context,
                                      AlignmentTrack.RenderOptions renderOptions,
@@ -322,7 +350,7 @@ public class AlignmentDataManager {
                 ReferenceFrame frame = context != null ? context.getReferenceFrame() : null;
                 addLoadedInterval(frame, loadedInterval);
 
-                getEventBus().post(new DataLoadedEvent(context));
+                eventBus.post(new DataLoadedEvent(context));
 
                 isLoading = false;
             }
@@ -332,8 +360,6 @@ public class AlignmentDataManager {
 
 
     }
-
-    static int n = 1;
 
     AlignmentInterval loadInterval(String chr, int start, int end, AlignmentTrack.RenderOptions renderOptions) {
 
@@ -348,7 +374,7 @@ public class AlignmentDataManager {
                 renderOptions != null ? renderOptions.bisulfiteContext : null;
 
 
-        AlignmentTileLoader.AlignmentTile t = reader.loadTile(sequence, start, end, this.spliceJunctionHelper,
+        AlignmentTile t = reader.loadTile(sequence, start, end, this.spliceJunctionHelper,
                 downsampleOptions, peStats, bisulfiteContext);
         //System.out.println(chr + "\t" + start + "\t" + end + "\t" + (n++) + "   (" + format.format(delta) + ")");
 
@@ -444,10 +470,6 @@ public class AlignmentDataManager {
                 stats.compute(renderOptions.getMinInsertSizePercentile(), renderOptions.getMaxInsertSizePercentile());
             }
         }
-    }
-
-    public EventBus getEventBus() {
-        return eventBus;
     }
 
     public SpliceJunctionHelper getSpliceJunctionHelper() {

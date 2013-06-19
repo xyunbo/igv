@@ -11,6 +11,7 @@
 
 package org.broad.igv.ui.panel;
 
+import com.google.common.eventbus.EventBus;
 import org.broad.igv.PreferenceManager;
 import org.broad.igv.feature.Locus;
 import org.broad.igv.feature.exome.ExomeReferenceFrame;
@@ -36,6 +37,8 @@ public class FrameManager {
 
     public static final String DEFAULT_FRAME_NAME = "genome";
 
+    private static EventBus eventBus;
+
     static {
         frames.add(getDefaultFrame());
     }
@@ -43,8 +46,13 @@ public class FrameManager {
     public synchronized static ReferenceFrame getDefaultFrame() {
         if (defaultFrame == null) {
             defaultFrame = new ReferenceFrame(DEFAULT_FRAME_NAME);
+            eventBus = new EventBus();
         }
         return defaultFrame;
+    }
+
+    public static EventBus getEventBus() {
+        return eventBus;
     }
 
     /**
@@ -98,6 +106,7 @@ public class FrameManager {
         frames.clear();
         frames.add(defaultFrame);
         exomeMode = true;
+        eventBus.post(new FrameChangeEvent(frames));
         return true;
     }
 
@@ -110,6 +119,7 @@ public class FrameManager {
         frames.clear();
         frames.add(defaultFrame);
         exomeMode = false;
+        eventBus.post(new FrameChangeEvent(frames));
         return true;
     }
 
@@ -120,6 +130,7 @@ public class FrameManager {
 
     public static void setFrames(List<ReferenceFrame> f) {
         frames = f;
+        eventBus.post(new FrameChangeEvent(frames));
     }
 
     public static boolean isGeneListMode() {
@@ -136,6 +147,7 @@ public class FrameManager {
             }
         }
         frames.add(getDefaultFrame());
+        eventBus.post(new FrameChangeEvent(frames));
         getDefaultFrame().recordHistory();
     }
 
@@ -170,6 +182,8 @@ public class FrameManager {
                     }
                 }
             }
+            eventBus.post(new FrameChangeEvent(frames));
+
 
             if (lociNotFound.size() > 1) {
                 StringBuffer message = new StringBuffer();
@@ -228,6 +242,19 @@ public class FrameManager {
 
     public static void removeFrame(ReferenceFrame frame) {
         frames.remove(frame);
+        eventBus.post(new FrameChangeEvent(frames));
+    }
+
+    public static class FrameChangeEvent {
+        List<ReferenceFrame> frames;
+
+        public FrameChangeEvent(List<ReferenceFrame> frames) {
+            this.frames = frames;
+        }
+
+        public List<ReferenceFrame> getFrames() {
+            return frames;
+        }
     }
 
 }
