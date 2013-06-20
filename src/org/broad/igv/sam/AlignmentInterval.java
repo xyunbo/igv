@@ -41,9 +41,7 @@ public class AlignmentInterval extends Interval {
     public AlignmentInterval(String chr, int start, int end,
                              LinkedHashMap<String, List<Row>> groupedAlignmentRows,
                              AlignmentCounts counts,
-                             SpliceJunctionHelper spliceJunctionHelper,
-                             List<DownsampledInterval> downsampledIntervals,
-                             AlignmentTrack.RenderOptions renderOptions) {
+                             List<DownsampledInterval> downsampledIntervals) {
 
         super(chr, start, end);
         this.groupedAlignmentRows = groupedAlignmentRows;
@@ -57,7 +55,7 @@ public class AlignmentInterval extends Interval {
     }
 
     static AlignmentInterval emptyAlignmentInterval(String chr, int start, int end) {
-        return new AlignmentInterval(chr, start, end, null, null, null, null, null);
+        return new AlignmentInterval(chr, start, end, null, null, null);
     }
 
     static Alignment getFeatureContaining(List<Alignment> features, int right) {
