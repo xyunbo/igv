@@ -83,7 +83,6 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
      * want to make sure they don't overlap
      */
     //private HashBasedTable<Integer, Integer, Feature> featureStartEndTable = null;
-
     public void setSelectedExons(Set<IExon> selectedExons) {
         this.selectedExons = selectedExons;
     }
@@ -91,6 +90,7 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
     /**
      * Set the data manager and coverage track. This is so we can render
      * coverage
+     *
      * @param dataManager
      */
     public void setDataManager(AlignmentDataManager dataManager) {
@@ -98,7 +98,7 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
         this.setCoverageTrack(dataManager.getCoverageTrack());
     }
 
-    public AlignmentDataManager getDataManager(){
+    public AlignmentDataManager getDataManager() {
         return this.dataManager;
     }
 
@@ -110,7 +110,7 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
         return coverageTrack;
     }
 
-    public enum ShapeType{
+    public enum ShapeType {
         CIRCLE,
         ELLIPSE,
         TEXT
@@ -124,7 +124,7 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
         this.maxDepth = maxDepth;
     }
 
-    public void setShapeType(ShapeType shapeType){
+    public void setShapeType(ShapeType shapeType) {
         this.shapeType = shapeType;
     }
 
@@ -138,7 +138,7 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
 
     public void setColor(Color color) {
         this.color = color;
-        if(this.coverageTrack != null) this.coverageTrack.setColor(color);
+        if (this.coverageTrack != null) this.coverageTrack.setColor(color);
     }
 
     private void setCoverageTrack(CoverageTrack covTrack) {
@@ -149,7 +149,6 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
         coverageTrack.setAutoScale(true);
         coverageTrack.rescale();
     }
-
 
 
     /**
@@ -170,7 +169,7 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
 
         Rectangle coverageRectangle = new Rectangle(trackRectangle);
 
-        if(coverageTrack != null){
+        if (coverageTrack != null) {
             //Only want the coverage track to go so high so that the arcs still have room
             int newHeight = coverageRectangle.height / 2;
             int newY = coverageRectangle.y + coverageRectangle.height / 2 - newHeight;
@@ -203,7 +202,7 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
             // a feature's region
             Set<IExon> locselectedExons = selectedExons;
 
-            if(drawFeatureAbove == null) drawFeatureAbove = new HashMap<Feature, Boolean>(featureList.size());
+            if (drawFeatureAbove == null) drawFeatureAbove = new HashMap<Feature, Boolean>(featureList.size());
             //if(featureStartEndTable == null) featureStartEndTable = HashBasedTable.create();
             boolean lastDrawAbove = true;
             for (IGVFeature feature : featureList) {
@@ -222,7 +221,7 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
 //                }
 
                 Boolean drawAbove = drawFeatureAbove.get(junctionFeature);
-                if(drawAbove == null) {
+                if (drawAbove == null) {
                     drawAbove = !lastDrawAbove;
                     drawFeatureAbove.put(junctionFeature, drawAbove);
                 }
@@ -230,15 +229,15 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
                 //Only show arcs for the selected feature, if applicable
                 if (locselectedExons != null && locselectedExons.size() > 0) {
                     boolean inSelected = false;
-                    for(IExon selectedExon: locselectedExons){
-                        if((junctionStart >= selectedExon.getStart() && junctionStart <= selectedExon.getEnd())
-                                || (junctionEnd >= selectedExon.getStart() && junctionEnd <= selectedExon.getEnd())){
+                    for (IExon selectedExon : locselectedExons) {
+                        if ((junctionStart >= selectedExon.getStart() && junctionStart <= selectedExon.getEnd())
+                                || (junctionEnd >= selectedExon.getStart() && junctionEnd <= selectedExon.getEnd())) {
                             inSelected = true;
                             break;
                         }
                     }
 
-                    if(!inSelected) continue;
+                    if (!inSelected) continue;
                 }
 
                 //double virtualPixelStart = Math.round((flankingStart - origin) / locScale);
@@ -261,9 +260,9 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
                     int pixelYstart = 0;
                     int pixelYend = 0;
 
-                    if(coverageTrack != null){
-                        pixelYstart = getYOffset(coverageRectangle, coverageTrack.getDataRange() ,getCoverage(junctionStart));
-                        pixelYend = getYOffset(coverageRectangle, coverageTrack.getDataRange() ,getCoverage(junctionEnd));
+                    if (coverageTrack != null) {
+                        pixelYstart = getYOffset(coverageRectangle, coverageTrack.getDataRange(), getCoverage(junctionStart));
+                        pixelYend = getYOffset(coverageRectangle, coverageTrack.getDataRange(), getCoverage(junctionEnd));
                     }
 
 
@@ -287,32 +286,26 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
      * Get the coverage around this approximate genome position. We actually look
      * for a maximum around a certain window. This is intended for plotting, we just
      * want the arc to look like it's coming from the top
+     *
      * @param genomePos
      * @return
      */
     private int getCoverage(int genomePos) {
-//        Integer yOffset = yOffsetMap.get(genomePos);
-//        if(yOffset != null) return yOffset;
-
-        if(dataManager == null) return 0;
-        Collection<AlignmentInterval> intervals = dataManager.getAllLoadedIntervals();
-        if(intervals == null) return 0;
-
-        int buffer = 4;
-        int coverage = 0;
-        for(AlignmentInterval interval: intervals){
-            if(interval.contains(interval.getChr(), genomePos - buffer, genomePos + buffer)){
-                for(int loc= genomePos - buffer; loc < genomePos + buffer; loc++){
-                    coverage = Math.max(coverage, interval.getTotalCount(loc));
-                }
-                return coverage;
-            }
-        }
+//
+//        int buffer = 4;
+//        int coverage = 0;
+//        AlignmentInterval interval = dataManager.getLoadedInterval(interval.getChr(), genomePos - buffer, genomePos + buffer);
+//        if (interval != null) {
+//            for (int loc = genomePos - buffer; loc < genomePos + buffer; loc++) {
+//                coverage = Math.max(coverage, interval.getTotalCount(loc));
+//            }
+//            return coverage;
+//        }
 
         return 0;
     }
 
-    private int getYOffset(Rectangle rect, DataRange range, int totalCount){
+    private int getYOffset(Rectangle rect, DataRange range, int totalCount) {
         //int pY = (int) rect.getMaxY() - 1;
         double maxRange = range.isLog() ? Math.log10(range.getMaximum()) : range.getMaximum();
         double tmp = range.isLog() ? Math.log10(totalCount) / maxRange : totalCount / maxRange;
@@ -326,15 +319,15 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
      * Draw a filled arc representing a single feature. The thickness and height of the arc are proportional to the
      * depth of coverage.  Some of this gets a bit arcane -- the result of lots of visual tweaking.
      *
-     * @param pixelYStartOffset    the y offset from center line that the arc should start at
-     * @param pixelYEndOffset      thy y offset from center line that the arc should end at
+     * @param pixelYStartOffset  the y offset from center line that the arc should start at
+     * @param pixelYEndOffset    thy y offset from center line that the arc should end at
      * @param pixelJunctionStart the starting position of the junction, whether on-screen or not
      * @param pixelJunctionEnd   the ending position of the junction, whether on-screen or not
      * @param depth              coverage depth
      * @param trackRectangle
      * @param context
      * @param featureColor       the color specified for this feature.  May be null.
-     * @param drawAbove         Whether to draw the arc above or below the centerline
+     * @param drawAbove          Whether to draw the arc above or below the centerline
      */
     protected void drawFeature(int pixelYStartOffset, int pixelYEndOffset,
                                int pixelJunctionStart, int pixelJunctionEnd, int depth,
@@ -385,7 +378,7 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
         GeneralPath arcPath = new GeneralPath();
         arcPath.moveTo(pixelJunctionStart, arcBeginY);
         arcPath.curveTo(pixelJunctionStart, arcControlPeakY,
-                        pixelJunctionEnd, arcControlPeakY,
+                pixelJunctionEnd, arcControlPeakY,
                 pixelJunctionEnd, arcEndY);
 
         Graphics2D g2D = context.getGraphic2DForColor(color);
@@ -398,7 +391,7 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
 
         //Setting maxDepth to 1 should just max everything out, but 1/0 tends
         //to make things crash
-        if(maxDepth >= 2){
+        if (maxDepth >= 2) {
             double scale = (maxStrokeSize - minStrokeSize) / Math.log(maxDepth);
             strokeSize = scale * Math.log(effDepth) + minStrokeSize;
         }
@@ -416,7 +409,7 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
         double actArcPeakY = arcBeginY + yPosModifier * Math.pow(0.5, 3) * (6) * arcHeight;
 
         Shape shape = null;
-        switch(shapeType){
+        switch (shapeType) {
 //            case CIRCLE:
 //                shape = createDepthCircle(maxPossibleShapeHeight, depthProportionOfMax, midX, actArcPeakY);
 //                break;
@@ -444,15 +437,15 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
                 break;
         }
 
-        if(shape != null){
+        if (shape != null) {
             g2D.draw(shape);
             g2D.fill(shape);
         }
     }
 
-    private Shape createDepthEllipse(double maxPossibleShapeHeight, double depthProportionOfMax, double arcMidX, double actArcPeakY){
+    private Shape createDepthEllipse(double maxPossibleShapeHeight, double depthProportionOfMax, double arcMidX, double actArcPeakY) {
         double w = 5f;
-        double x = arcMidX - w/2;
+        double x = arcMidX - w / 2;
 
         double h = maxPossibleShapeHeight * depthProportionOfMax;
 
@@ -462,11 +455,11 @@ public class SashimiJunctionRenderer extends IGVFeatureRenderer {
         return new Ellipse2D.Double(x, y, w, h);
     }
 
-    private Shape createDepthCircle(double maxPossibleShapeHeight, double depthProportionOfMax, double arcMidX, double actArcPeakY){
+    private Shape createDepthCircle(double maxPossibleShapeHeight, double depthProportionOfMax, double arcMidX, double actArcPeakY) {
 
         double h = maxPossibleShapeHeight * Math.sqrt(depthProportionOfMax);
         double w = h;
-        double x = arcMidX - w/2;
+        double x = arcMidX - w / 2;
 
         //The ellipse is always specified from the top left corner
         double y = actArcPeakY - h / 2;

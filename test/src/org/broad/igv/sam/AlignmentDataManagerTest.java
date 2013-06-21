@@ -86,7 +86,7 @@ public class AlignmentDataManagerTest extends AbstractHeadlessTest {
     }
 
     private static void assertManagerHasInterval(AlignmentDataManager manager, String chr, int start, int end) {
-        AlignmentInterval interval = manager.getLoadedInterval(frameName);
+        AlignmentInterval interval = manager.getLoadedInterval(chr, start, end);
         assertNotNull(interval);
 
         boolean haveInterval = interval.contains(chr, start, end);
@@ -133,7 +133,7 @@ public class AlignmentDataManagerTest extends AbstractHeadlessTest {
             assertManagerHasInterval(manager, chr, locus.getStart(), locus.getEnd());
         }
 
-        return manager.getLoadedInterval(frameName);
+        return manager.getLoadedInterval(chr, start, end);
 
     }
 

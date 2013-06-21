@@ -178,7 +178,7 @@ public class CoverageTrack extends AbstractTrack {
             List<ReferenceFrame> frameList = FrameManager.getFrames();
             List<AlignmentInterval> intervals = new ArrayList<AlignmentInterval>(frameList.size());
             for(ReferenceFrame frame: frameList){
-                intervals.add(dataManager.getLoadedInterval(frame.getName()));
+                intervals.add(dataManager.getLoadedInterval(frame.getChrName(), (int) frame.getOrigin(), (int) frame.getEnd()));
             }
             rescaleIntervals(intervals);
         }
@@ -186,7 +186,7 @@ public class CoverageTrack extends AbstractTrack {
 
     public void rescale(ReferenceFrame frame) {
         if (autoScale & dataManager != null) {
-            rescaleIntervals(Arrays.asList(dataManager.getLoadedInterval(frame.getName())));
+            rescaleIntervals(Arrays.asList(dataManager.getLoadedInterval(frame.getChrName(), (int) frame.getOrigin(), (int) frame.getEnd())));
         }
     }
 
@@ -214,7 +214,7 @@ public class CoverageTrack extends AbstractTrack {
             AlignmentInterval interval = null;
             if (dataManager != null) {
                 dataManager.preload(context, renderOptions, true);
-                interval = dataManager.getLoadedInterval(context.getReferenceFrame().getName());
+                interval = dataManager.getLoadedInterval(context.getChr(), (int) context.getOrigin(), (int) context.getEndLocation());
             }
             if (interval != null) {
                 if (interval.contains(context.getChr(), (int) context.getOrigin(), (int) context.getEndLocation())) {
@@ -272,7 +272,7 @@ public class CoverageTrack extends AbstractTrack {
         float maxRange = PreferenceManager.getInstance().getAsFloat(PreferenceManager.SAM_MAX_VISIBLE_RANGE);
         float minVisibleScale = (maxRange * 1000) / 700;
         if (frame.getScale() < minVisibleScale) {
-            AlignmentInterval interval = dataManager.getLoadedInterval(frame.getName());
+            AlignmentInterval interval = dataManager.getLoadedInterval(chr, (int) position, (int) position + 1);
             if (interval == null) return null;
 
             if (interval.contains(chr, (int) position, (int) position)) {

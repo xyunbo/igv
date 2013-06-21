@@ -133,7 +133,7 @@ public class SpliceJunctionFinderTrack extends FeatureTrack implements Alignment
     @Override
     protected void loadFeatures(String chr, int start, int end, RenderContext context) {
         parent = context.getPanel();
-        AlignmentInterval loadedInterval = dataManager.getLoadedInterval(context.getReferenceFrame().getName());
+        AlignmentInterval loadedInterval = dataManager.getLoadedInterval(chr, start, end);
         if (loadedInterval == null) return;
 
         SpliceJunctionHelper helper = dataManager.getSpliceJunctionHelper();
