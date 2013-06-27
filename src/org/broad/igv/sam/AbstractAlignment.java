@@ -341,11 +341,6 @@ public abstract class AbstractAlignment implements Alignment {
     }
 
     @Override
-    public void finish() {
-        //default operation is nothing
-    }
-
-    @Override
     public boolean isPrimary() {
         return true;
     }

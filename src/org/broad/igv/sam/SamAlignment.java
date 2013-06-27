@@ -62,20 +62,8 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
     private boolean readPairedFlag;
     private boolean properPairFlag;
 
-    /**
-     * DO NOT ACCESS THIS FIELD DIRECTLY, EVEN WITHIN THIS CLASS.
-     * USE {@link #getRecord}.
-     */
     private SAMRecord record;
-    private Reference<SAMRecord> softRecord;
-
-    /**
-     * DO NOT ACCESS THIS FIELD DIRECTLY, EVEN WITHIN THIS CLASS
-     * USE {@link #getReadSequence}
-     */
     private String readSequence;
-    private Reference<String> softReadSequence;
-
 
     private String cigarString;
     private boolean firstRead = false;
@@ -86,12 +74,6 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
     private String readGroup;
     private String library;
     private String sample;
-
-    /**
-     * Pointer to the reader and location in the file
-     * where this file was derived from
-     */
-    private SAMFileSource fileSource;
 
     private boolean firstInPair;
     private Strand firstOfPairStrand;
@@ -123,19 +105,12 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
 
     public static final String REDUCE_READS_TAG = "RR";
 
-    /**
-     * Whether to load read sequence / record / other data lazily.
-     * Eventually we will likely remove this flag, here for easy testing
-     */
-    public static final boolean DEFAULT_LAZY_LOAD = Boolean.parseBoolean(System.getProperty("DEFAULT_LAZY_LOAD", "false"));
 
     public SamAlignment(SAMRecord record) {
         flowOrder = null;
         String keySequence = null;
 
         this.record = record;
-        this.softRecord = new WeakReference<SAMRecord>(record);
-        this.fileSource = record.getFileSource();
 
         String refName = record.getReferenceName();
         Genome genome = GenomeManager.getInstance().getCurrentGenome();
@@ -156,7 +131,6 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
         this.setInferredInsertSize(record.getInferredInsertSize());
 
         this.readSequence = record.getReadString();
-        this.softReadSequence = new SoftReference<String>(record.getReadString());
 
         this.readLength = record.getReadLength();
         this.firstInPair = record.getReadPairedFlag() ? record.getFirstOfPairFlag() : true;
@@ -585,12 +559,7 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
     }
 
     public String getReadSequence() {
-        String readSequence = this.readSequence != null ? this.readSequence : softReadSequence.get();
-        if (readSequence == null) {
-            readSequence = getRecord().getReadString();
-            this.softReadSequence = new SoftReference<String>(readSequence);
-        }
-        return readSequence;
+       return readSequence;
     }
 
     @Override
@@ -633,10 +602,6 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
         return library;
     }
 
-    private SAMFileSource getFileSource() {
-        return fileSource;
-    }
-
     /**
      * Retrieves the SAMRecord corresponding to this alignment.
      * May be loaded from the file if not in memory
@@ -644,24 +609,6 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
      * @return The SAMRecord which created this SamAlignment
      */
     public SAMRecord getRecord() {
-        SAMRecord record = this.record != null ? this.record : this.softRecord.get();
-        if (record == null) {
-            SAMFileSource source = this.getFileSource();
-            if(source == null){
-                throw new IllegalStateException("SAMRecord is null but we don't have a file pointer to reload it");
-            }
-            SAMFileSpan span = source.getFilePointer();
-            SAMRecordIterator iter = source.getReader().iterator(span);
-
-            //In theory there should only be one
-            record = iter.next();
-
-            if (iter.hasNext()) {
-                log.error("Found multiple records during query of file span:" + span);
-            }
-            iter.close();
-            this.softRecord = new WeakReference<SAMRecord>(record);
-        }
         return record;
     }
 
@@ -786,24 +733,6 @@ public class SamAlignment extends AbstractAlignment implements Alignment {
 
     public String getPairOrientation() {
         return pairOrientation;
-    }
-
-    @Override
-    public void finish() {
-        super.finish();
-        SAMFileSource source = this.getFileSource();
-        if (DEFAULT_LAZY_LOAD && source != null) {
-            //Check that we can reload the record before getting rid of it.
-            //SAMTextReader doesn't support this, for instance
-            SAMFileSpan span = source.getFilePointer();
-            try{
-                SAMRecordIterator iter = source.getReader().iterator(span);
-                this.record = null;
-                //this.readSequence = null;
-            }catch(Exception e){
-                this.fileSource = null;
-            }
-        }
     }
 
     public boolean isVendorFailedRead() {

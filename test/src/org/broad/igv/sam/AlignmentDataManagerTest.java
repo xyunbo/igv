@@ -365,48 +365,6 @@ public class AlignmentDataManagerTest extends AbstractHeadlessTest {
         Assert.assertTrue(count > 0);
     }
 
-    /**
-     * Test that we can load portions of alignment into memory, and only
-     * look up the rest when we need it. Like the read sequence.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testLazyLoadSequence() throws Exception {
-        System.out.println("Lazy loading: " + SamAlignment.DEFAULT_LAZY_LOAD);
-        AlignmentDataManager manager = getManager171();
-        final String chr = "chr1";
-        final int start = 151666494;
-        final int end = start + 1000;
-        Iterator<Alignment> iter = loadInterval(manager, chr, start, end).getAlignmentIterator();
-        List<SamAlignment> alignmentList = new ArrayList<SamAlignment>(100);
-        //List<String> readSeqs = new ArrayList<String>(100);
-        while (iter.hasNext()) {
-            Alignment al = iter.next();
-            SamAlignment sal = (SamAlignment) al;
-            alignmentList.add(sal);
-
-            //TODO Alignment has already been finished, should rewrite this test loading twice
-//            String readSeq = sal.getReadSequenceField();
-//            readSeqs.add(readSeq);
-//            al.finish();
-
-            if (SamAlignment.DEFAULT_LAZY_LOAD) {
-                assertNull(sal.getReadSequenceField());
-            } else {
-                assertNotNull(sal.getReadSequenceField());
-            }
-        }
-
-        int counter = 0;
-        for (SamAlignment al : alignmentList) {
-            String readSeq = al.getReadSequence();
-            assertNotNull(readSeq);
-            assertTrue(readSeq.length() > 0);
-            String rem = readSeq.toUpperCase().replaceAll("[ACGTN]", "");
-            assertEquals("", rem);
-        }
-    }
 
     /**
      * Load alignment interval. Here for other tests, so we don't need to expose

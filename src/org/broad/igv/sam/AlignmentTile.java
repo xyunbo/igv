@@ -92,8 +92,6 @@ public class AlignmentTile {
         } else {
             alignments.add(alignment);
         }
-
-        alignment.finish();
     }
 
     private void emptyBucket() {

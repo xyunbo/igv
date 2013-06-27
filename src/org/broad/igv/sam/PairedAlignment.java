@@ -297,14 +297,6 @@ public class PairedAlignment implements Alignment {
     }
 
     @Override
-    public void finish() {
-        firstAlignment.finish();
-        if(secondAlignment != null) {
-            secondAlignment.finish();
-        }
-    }
-
-    @Override
     public boolean isPrimary() {
         return firstAlignment.isPrimary() && (secondAlignment == null || secondAlignment.isPrimary());
     }
