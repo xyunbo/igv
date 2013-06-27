@@ -17,6 +17,7 @@ import org.broad.igv.feature.Exon;
 import org.broad.igv.sam.AlignmentDataManager;
 import org.broad.igv.sam.AlignmentTrack;
 import org.broad.igv.track.GFFFeatureSource;
+import org.broad.igv.ui.panel.ReferenceFrame;
 import org.broad.igv.util.ResourceLocator;
 import org.broad.igv.util.TestUtils;
 import org.broad.tribble.Feature;
@@ -58,7 +59,9 @@ public class CufflinksPluginTest extends AbstractPluginTest{
         ResourceLocator locator = new ResourceLocator(inFile.getAbsolutePath());
         AlignmentDataManager dataManager = new AlignmentDataManager(locator, genome);
         AlignmentTrack alignmentTrack = new AlignmentTrack(locator, dataManager, genome);
-        dataManager.loadAlignments(chr, start, end, null, null);
+
+        ReferenceFrame.Range range = new ReferenceFrame.Range(chr, start, end);
+        dataManager.loadAlignments(Arrays.asList(range), null, null, false);
 
         PluginSpecReader.Command command = tool.commandList.get(0);
 

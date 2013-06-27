@@ -19,7 +19,6 @@ import org.broad.igv.feature.genome.Genome;
 import org.broad.igv.sam.AlignmentTrack.SortOption;
 import org.broad.igv.sam.reader.AlignmentReaderFactory;
 import org.broad.igv.track.RenderContext;
-import org.broad.igv.track.Track;
 import org.broad.igv.ui.event.DataLoadedEvent;
 import org.broad.igv.ui.panel.FrameManager;
 import org.broad.igv.ui.panel.ReferenceFrame;
@@ -40,7 +39,7 @@ public class AlignmentDataManager {
 
     private HashMap<String, String> chrMappings = new HashMap();
     private volatile boolean isLoading = false;
-    private AlignmentTileLoader reader;
+    private AlignmentTileLoader loader;
     private CoverageTrack coverageTrack;
 
     private static final int MAX_ROWS = 1000000;
@@ -65,7 +64,7 @@ public class AlignmentDataManager {
 
 
     public AlignmentDataManager(ResourceLocator locator, Genome genome) throws IOException {
-        reader = new AlignmentTileLoader(AlignmentReaderFactory.getReader(locator));
+        loader = new AlignmentTileLoader(AlignmentReaderFactory.getReader(locator));
         peStats = new HashMap();
         spliceJunctionHelper = new SpliceJunctionHelper(new SpliceJunctionHelper.LoadOptions());
         tracks = new HashSet<Object>();
@@ -120,7 +119,7 @@ public class AlignmentDataManager {
      */
     private void initChrMap(Genome genome) {
         if (genome != null) {
-            List<String> seqNames = reader.getSequenceNames();
+            List<String> seqNames = loader.getSequenceNames();
             if (seqNames != null) {
                 for (String chr : seqNames) {
                     String alias = genome.getChromosomeAlias(chr);
@@ -138,8 +137,8 @@ public class AlignmentDataManager {
         return experimentType;
     }
 
-    public AlignmentTileLoader getReader() {
-        return reader;
+    public AlignmentTileLoader getLoader() {
+        return loader;
     }
 
     public Map<String, PEStats> getPEStats() {
@@ -147,11 +146,11 @@ public class AlignmentDataManager {
     }
 
     public boolean isPairedEnd() {
-        return reader.isPairedEnd();
+        return loader.isPairedEnd();
     }
 
     public boolean hasIndex() {
-        return reader.hasIndex();
+        return loader.hasIndex();
     }
 
     public void setCoverageTrack(CoverageTrack coverageTrack) {
@@ -169,12 +168,12 @@ public class AlignmentDataManager {
      * @return
      */
     public List<String> getSequenceNames() {
-        return reader.getSequenceNames();
+        return loader.getSequenceNames();
     }
 
 
     public boolean isIonTorrent() {
-        Set<String> platforms = reader.getPlatforms();
+        Set<String> platforms = loader.getPlatforms();
         if (platforms != null) {
             return platforms.contains("IONTORRENT");
         }
@@ -199,52 +198,28 @@ public class AlignmentDataManager {
                                      boolean expandEnds) {
 
 
+        if (context.getChr().equals(Globals.CHR_ALL)) return;
+
         // Loop through all reference frames
-        boolean hasAllIntervals = true;
+        List<ReferenceFrame.Range> unloadedRanges = new ArrayList<ReferenceFrame.Range>();
         for (ReferenceFrame frame : FrameManager.getFrames()) {
             ReferenceFrame.Range range = frame.getCurrentRange();
             if (!alignmentIntervalCache.hasIntervalFor(range.getChr(), range.getStart(), range.getEnd())) {
-                hasAllIntervals = false;
-                break;
+                unloadedRanges.add(range);
             }
         }
-        if (hasAllIntervals) return;
+        if (unloadedRanges.isEmpty()) return;
 
-        final String chr = context.getChr();
-        final int start = (int) context.getOrigin();
-        final int end = (int) context.getEndLocation();
-        //  AlignmentInterval loadedInterval = loadedIntervalMap.get(context.getReferenceFrame().getName());
-
-        int adjustedStart = start;
-        int adjustedEnd = end;
-        int windowSize = PreferenceManager.getInstance().getAsInt(PreferenceManager.SAM_MAX_VISIBLE_RANGE) * 1000;
-        int center = (end + start) / 2;
-        int expand = Math.max(end - start, windowSize / 2);
-
-//
-//
-//        if (loadedInterval != null) {
-//            // First see if we have a loaded interval that fully contain the requested interval.  If yes we're done
-//            if (loadedInterval.contains(chr, start, end)) {
-//                // Requested interval is fully contained in the existing one, we're done
-//                return;
-//
-//            }
-//        }
-
-        if (expandEnds) {
-            adjustedStart = Math.max(0, Math.min(start, center - expand));
-            adjustedEnd = Math.max(end, center + expand);
-        }
-        loadAlignments(chr, adjustedStart, adjustedEnd, renderOptions, context);
+        loadAlignments(unloadedRanges, renderOptions, context, expandEnds);
     }
 
 
-    public synchronized void loadAlignments(final String chr, final int start, final int end,
+    public synchronized void loadAlignments(final List<ReferenceFrame.Range> ranges,
                                             final AlignmentTrack.RenderOptions renderOptions,
-                                            final RenderContext context) {
+                                            final RenderContext context,
+                                            final boolean expandEnds) {
 
-        if (isLoading || chr.equals(Globals.CHR_ALL)) {
+        if (isLoading) {
             return;
         }
 
@@ -259,10 +234,29 @@ public class AlignmentDataManager {
 
             public void run() {
 
-                log.debug("Loading alignments: " + chr + ":" + start + "-" + end + " for " + AlignmentDataManager.this);
+                for (ReferenceFrame.Range range : ranges) {
 
-                AlignmentInterval loadedInterval = loadInterval(chr, start, end, renderOptions);
-                alignmentIntervalCache.addInterval(loadedInterval);
+                    log.info("Loading alignments: " + range.getChr() + ":" + range.getStart() + "-" + range.getEnd() + " for " + AlignmentDataManager.this);
+
+
+                    final String chr = range.getChr();
+                    final int start = range.getStart();
+                    final int end = range.getEnd();
+
+                    int adjustedStart = start;
+                    int adjustedEnd = end;
+                    if (expandEnds) {
+                        int windowSize = PreferenceManager.getInstance().getAsInt(PreferenceManager.SAM_MAX_VISIBLE_RANGE) * 1000;
+                        int center = (end + start) / 2;
+                        int expand = Math.max(end - start, windowSize / 2);
+                        adjustedStart = Math.max(0, Math.min(start, center - expand));
+                        adjustedEnd = Math.max(end, center + expand);
+                    }
+
+                    AlignmentInterval loadedInterval = loadInterval(chr, adjustedStart, adjustedEnd, renderOptions);
+                    alignmentIntervalCache.addInterval(loadedInterval);
+
+                }
 
                 eventBus.post(new DataLoadedEvent(context));
 
@@ -288,7 +282,7 @@ public class AlignmentDataManager {
                 renderOptions != null ? renderOptions.bisulfiteContext : null;
 
 
-        AlignmentTile t = reader.loadTile(sequence, start, end, this.spliceJunctionHelper,
+        AlignmentTile t = loader.loadTile(sequence, start, end, this.spliceJunctionHelper,
                 downsampleOptions, peStats, bisulfiteContext);
         //System.out.println(chr + "\t" + start + "\t" + end + "\t" + (n++) + "   (" + format.format(delta) + ")");
 
@@ -411,7 +405,7 @@ public class AlignmentDataManager {
         String chr = referenceFrame.getChrName();
         int start = (int) position;
         int end = start + 1;
-        AlignmentInterval loadedInterval = alignmentIntervalCache.getInterval (chr, start, end);
+        AlignmentInterval loadedInterval = alignmentIntervalCache.getInterval(chr, start, end);
         if (loadedInterval == null) return null;
 
         if (loadedInterval.getGroupedAlignments() != null && loadedInterval.contains(chr, start, end)) {
@@ -449,9 +443,9 @@ public class AlignmentDataManager {
     @Override
     protected void finalize() throws Throwable {
         super.finalize();
-        if (reader != null) {
+        if (loader != null) {
             try {
-                reader.close();
+                loader.close();
             } catch (IOException ex) {
                 log.error("Error closing AlignmentQueryReader. ", ex);
             }
