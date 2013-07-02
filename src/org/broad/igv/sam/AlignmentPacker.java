@@ -34,25 +34,19 @@ public class AlignmentPacker {
      * Minimum gap between the end of one alignment and start of another.
      */
     public static final int MIN_ALIGNMENT_SPACING = 5;
-    private final Comparator<Alignment> lengthComparator = new Comparator<Alignment>() {
-        public int compare(Alignment row1, Alignment row2) {
-            return (row2.getEnd() - row2.getStart()) -
-                    (row1.getEnd() - row2.getStart());
 
-        }
-    };
 
     /**
      * Allocates each alignment to the rows such that there is no overlap.
      *
-     * @param iter Iterator of alignments, sorted by start position
-     * @param end  Last index of the last alignment
+     * @param iter          Iterator of alignments, sorted by start position
+     * @param end           Last index of the last alignment
      * @param renderOptions
      */
     public LinkedHashMap<String, List<AlignmentInterval.Row>> packAlignments(
             Iterator<Alignment> iter, int end, AlignmentTrack.RenderOptions renderOptions) {
 
-        if(renderOptions == null) renderOptions = new AlignmentTrack.RenderOptions();
+        if (renderOptions == null) renderOptions = new AlignmentTrack.RenderOptions();
 
         LinkedHashMap<String, List<AlignmentInterval.Row>> packedAlignments = new LinkedHashMap<String, List<Row>>();
         boolean pairAlignments = renderOptions.isViewPairs() || renderOptions.isPairedArcView();
@@ -62,8 +56,7 @@ public class AlignmentPacker {
         }
 
         if (renderOptions.groupByOption == null) {
-            List<Row> alignmentRows = new ArrayList<Row>(10000);
-            pack(iter, end, pairAlignments, alignmentRows);
+            List<Row> alignmentRows = pack(iter, end, pairAlignments);
             packedAlignments.put("", alignmentRows);
         } else {
             // Separate alignments into groups.
@@ -88,13 +81,11 @@ public class AlignmentPacker {
             Comparator<String> groupComparator = getGroupComparator(renderOptions.groupByOption);
             Collections.sort(keys, groupComparator);
             for (String key : keys) {
-                List<Row> alignmentRows = new ArrayList<Row>(10000);
                 List<Alignment> group = groupedAlignments.get(key);
-                pack(group.iterator(), end, pairAlignments, alignmentRows);
+                List<Row> alignmentRows = pack(group.iterator(), end, pairAlignments);
                 packedAlignments.put(key, alignmentRows);
             }
-            List<Row> alignmentRows = new ArrayList<Row>(10000);
-            pack(nullGroup.iterator(), end, pairAlignments, alignmentRows);
+            List<Row> alignmentRows = pack(nullGroup.iterator(), end, pairAlignments);
             packedAlignments.put("", alignmentRows);
         }
 
@@ -159,11 +150,12 @@ public class AlignmentPacker {
         return null;
     }
 
-    private void pack(Iterator<Alignment> iter, int end, boolean pairAlignments,
-                      List<Row> alignmentRows) {
+    private List<Row> pack(Iterator<Alignment> iter, int end, boolean pairAlignments) {
+
+        List<Row> alignmentRows = new ArrayList<Row>(10000);
 
         if (!iter.hasNext()) {
-            return;
+            return alignmentRows;
         }
 
         Map<String, PairedAlignment> pairs = null;
@@ -172,7 +164,6 @@ public class AlignmentPacker {
         }
 
 
-        // Strictly speaking we should loop discarding dupes, etc.
         Alignment firstAlignment = iter.next();
         if (pairAlignments && firstAlignment.isPaired() && firstAlignment.isProperPair() && firstAlignment.getMate().isMapped()) {
             String readName = firstAlignment.getReadName();
@@ -186,16 +177,16 @@ public class AlignmentPacker {
 
         // Create buckets.  We use priority queues to keep the buckets sorted by alignment length.  However this
         // is probably a needless complication,  any collection type would do.
-        PriorityQueue firstBucket = new PriorityQueue(5, lengthComparator);
+        PriorityQueue firstBucket = createBucket();
         firstBucket.add(firstAlignment);
 
         // Use dense buckets for < 1,000,000 bp windows sparse otherwise
 
         BucketCollection buckets;
         if (bucketCount < 10000000) {
-            buckets = new DenseBucketCollection(bucketCount);
+            buckets = new DenseBucketCollection(start, bucketCount);
         } else {
-            buckets = new SparseBucketCollection();
+            buckets = new SparseBucketCollection(start);
         }
         buckets.set(0, firstBucket);
 
@@ -235,7 +226,7 @@ public class AlignmentPacker {
                 if (bucketNumber < bucketCount) {
                     PriorityQueue bucket = buckets.get(bucketNumber);
                     if (bucket == null) {
-                        bucket = new PriorityQueue<Alignment>(5, lengthComparator);
+                        bucket = createBucket();
                         buckets.set(bucketNumber, bucket);
                     }
                     bucket.add(alignment);
@@ -264,7 +255,7 @@ public class AlignmentPacker {
 
                 // Advance to next occupied bucket
                 int bucketNumber = nextStart - start;
-                bucket = buckets.getNextBucket(bucketNumber, emptyBuckets);
+                bucket = buckets.getNextBucket(bucketNumber, emptyBuckets);    // Change to getNextbucket(nextStart)
 
                 // Pull the next alignment out of the bucket and add to the current row
                 if (bucket == null) {
@@ -307,6 +298,8 @@ public class AlignmentPacker {
             alignmentRows.add(currentRow);
         }
 
+        return alignmentRows;
+
     }
 
 
@@ -330,11 +323,14 @@ public class AlignmentPacker {
      */
     static class DenseBucketCollection implements BucketCollection {
 
+        int start;
+
         int lastBucketNumber = -1;
 
         final PriorityQueue[] bucketArray;
 
-        DenseBucketCollection(int bucketCount) {
+        DenseBucketCollection(int start, int bucketCount) {
+            this.start = start;
             bucketArray = new PriorityQueue[bucketCount];
         }
 
@@ -342,8 +338,20 @@ public class AlignmentPacker {
             bucketArray[idx] = bucket;
         }
 
-        public PriorityQueue<Alignment> get(int idx) {
-            return bucketArray[idx];
+        public PriorityQueue<Alignment> get(int position) {
+
+            int bucketNumber = Math.max(0, position - start);
+            if (bucketNumber < bucketArray.length) {
+                PriorityQueue bucket = bucketArray[bucketNumber];
+                if (bucket == null) {
+                    bucket = createBucket();
+                    bucketArray[bucketNumber] = bucket;
+                }
+                return bucket;
+            } else {
+                log.debug("Alignment out of bounds: " + position);
+                return null;
+            }
         }
 
 
@@ -386,17 +394,30 @@ public class AlignmentPacker {
     }
 
 
+    static PriorityQueue<Alignment> createBucket() {
+        final Comparator<Alignment> lengthComparator = new Comparator<Alignment>() {
+            public int compare(Alignment row1, Alignment row2) {
+                return (row2.getEnd() - row2.getStart()) -
+                        (row1.getEnd() - row2.getStart());
+
+            }
+        };
+        return new PriorityQueue<Alignment>(5, lengthComparator);
+    }
+
     /**
      * "Sparse" implementation of an alignment BucketCollection.  Assumption is there are small clusters of alignments
      * along the genome, with mostly "white space".
      */
     static class SparseBucketCollection implements BucketCollection {
 
+        int start;
         boolean finished = false;
         List<Integer> keys;
         final HashMap<Integer, PriorityQueue<Alignment>> buckets;
 
-        SparseBucketCollection() {
+        SparseBucketCollection(int start) {
+            this.start = start;
             buckets = new HashMap(1000);
         }
 
@@ -407,8 +428,15 @@ public class AlignmentPacker {
             buckets.put(idx, bucket);
         }
 
-        public PriorityQueue<Alignment> get(int idx) {
-            return buckets.get(idx);
+        public PriorityQueue<Alignment> get(int position) {
+
+            int bucketNumber = Math.max(0, position - start);
+            PriorityQueue bucket = buckets.get(bucketNumber);
+            if (bucket == null) {
+                bucket = createBucket();
+                buckets.put(bucketNumber, bucket);
+            }
+            return bucket;
         }
 
         /**
