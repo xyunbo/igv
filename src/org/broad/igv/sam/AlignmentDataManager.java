@@ -22,10 +22,7 @@ import org.broad.igv.track.RenderContext;
 import org.broad.igv.ui.event.DataLoadedEvent;
 import org.broad.igv.ui.panel.FrameManager;
 import org.broad.igv.ui.panel.ReferenceFrame;
-import org.broad.igv.util.ArrayHeapObjectSorter;
-import org.broad.igv.util.LongRunningTask;
-import org.broad.igv.util.NamedRunnable;
-import org.broad.igv.util.ResourceLocator;
+import org.broad.igv.util.*;
 
 import java.io.IOException;
 import java.text.NumberFormat;
@@ -234,34 +231,67 @@ public class AlignmentDataManager {
 
             public void run() {
 
+                Map<ReferenceFrame.Range, AlignmentCounts> counts = new HashMap<ReferenceFrame.Range, AlignmentCounts>();
+                Map<ReferenceFrame.Range, List<DownsampledInterval>> downsampledIntervals = new HashMap<ReferenceFrame.Range, List<DownsampledInterval>>();
+                MergedAlignmentCltn mergedAlignmentCltn = new MergedAlignmentCltn();
+
+                int maxEnd = 0;
                 for (ReferenceFrame.Range range : ranges) {
 
                     log.info("Loading alignments: " + range.getChr() + ":" + range.getStart() + "-" + range.getEnd() + " for " + AlignmentDataManager.this);
 
 
                     final String chr = range.getChr();
-                    final int start = range.getStart();
-                    final int end = range.getEnd();
-
-                    int adjustedStart = start;
-                    int adjustedEnd = end;
+                    int start = range.getStart();
+                    int end = range.getEnd();
                     if (expandEnds) {
                         int windowSize = PreferenceManager.getInstance().getAsInt(PreferenceManager.SAM_MAX_VISIBLE_RANGE) * 1000;
                         int center = (end + start) / 2;
                         int expand = Math.max(end - start, windowSize / 2);
-                        adjustedStart = Math.max(0, Math.min(start, center - expand));
-                        adjustedEnd = Math.max(end, center + expand);
+                        start = Math.max(0, Math.min(start, center - expand));
+                        end = Math.max(end, center + expand);
                     }
+                    maxEnd = Math.max(end, maxEnd);
 
-                    AlignmentInterval loadedInterval = loadInterval(chr, adjustedStart, adjustedEnd, renderOptions);
-                    alignmentIntervalCache.addInterval(loadedInterval);
+                    String sequence = chrMappings.containsKey(chr) ? chrMappings.get(chr) : chr;
 
+
+                    AlignmentTrack.BisulfiteContext bisulfiteContext =
+                            renderOptions != null ? renderOptions.bisulfiteContext : null;
+
+                    AlignmentTile t = loader.loadTile(sequence, start, end, spliceJunctionHelper, peStats, bisulfiteContext);
+
+                    List<Alignment> alignments = t.getAlignments();
+                    // Downsampling can scramble the order,  we need to sort
+                    Comparator<Alignment> alignmentSorter = new Comparator<Alignment>() {
+                        public int compare(Alignment alignment, Alignment alignment1) {
+                            return alignment.getStart() - alignment1.getStart();
+                        }
+                    };
+                    Collections.sort(alignments, alignmentSorter);
+
+                    mergedAlignmentCltn.addAlignments(range, alignments);
+                    downsampledIntervals.put(range, t.getDownsampledIntervals());
+                    counts.put(range, t.getCounts());
                 }
 
+                Iterator<Alignment> iter = mergedAlignmentCltn.iterator();
+                final AlignmentPacker alignmentPacker = new AlignmentPacker();
+                LinkedHashMap<String, List<AlignmentInterval.Row>> alignmentRows = alignmentPacker.packAlignments(iter, maxEnd, renderOptions);
+
+                for (ReferenceFrame.Range range : ranges) {
+                    AlignmentCounts c = counts.get(range);
+                    List<DownsampledInterval> ds = downsampledIntervals.get(range);
+                    AlignmentInterval loadedInterval = new AlignmentInterval(range.getChr(), range.getStart()-100,
+                            range.getEnd()+100, alignmentRows, c, ds);
+
+                    alignmentIntervalCache.addInterval(loadedInterval);
+                }
                 eventBus.post(new DataLoadedEvent(context));
 
                 isLoading = false;
             }
+
         };
 
         LongRunningTask.submit(runnable);
@@ -269,42 +299,17 @@ public class AlignmentDataManager {
 
     }
 
-    AlignmentInterval loadInterval(String chr, int start, int end, AlignmentTrack.RenderOptions renderOptions) {
-
-        NumberFormat format = NumberFormat.getInstance();
-        int delta = end - start;
+    AlignmentTile loadInterval(String chr, int start, int end, AlignmentTrack.RenderOptions renderOptions) {
 
         String sequence = chrMappings.containsKey(chr) ? chrMappings.get(chr) : chr;
 
-        DownsampleOptions downsampleOptions = new DownsampleOptions();
 
         final AlignmentTrack.BisulfiteContext bisulfiteContext =
                 renderOptions != null ? renderOptions.bisulfiteContext : null;
 
 
-        AlignmentTile t = loader.loadTile(sequence, start, end, this.spliceJunctionHelper,
-                downsampleOptions, peStats, bisulfiteContext);
-        //System.out.println(chr + "\t" + start + "\t" + end + "\t" + (n++) + "   (" + format.format(delta) + ")");
+        return loader.loadTile(sequence, start, end, this.spliceJunctionHelper, peStats, bisulfiteContext);
 
-        List<Alignment> alignments = t.getAlignments();
-
-        List<DownsampledInterval> downsampledIntervals = t.getDownsampledIntervals();
-
-        // Since we (potentially) downsampled,  we need to sort
-        Comparator<Alignment> alignmentSorter = new Comparator<Alignment>() {
-            public int compare(Alignment alignment, Alignment alignment1) {
-                return alignment.getStart() - alignment1.getStart();
-            }
-        };
-        Collections.sort(alignments, alignmentSorter);
-
-        Iterator<Alignment> iter = alignments.iterator();
-
-        final AlignmentPacker alignmentPacker = new AlignmentPacker();
-
-        LinkedHashMap<String, List<AlignmentInterval.Row>> alignmentRows = alignmentPacker.packAlignments(iter, end, renderOptions);
-
-        return new AlignmentInterval(chr, start, end, alignmentRows, t.getCounts(), downsampledIntervals);
     }
 
     public void sortRows(SortOption option, String chrName, double location, String tag) {
@@ -534,6 +539,69 @@ public class AlignmentDataManager {
             }
             return allIntervals;
         }
+    }
+
+
+    static class MergedAlignmentCltn {
+
+        List<Pair<ReferenceFrame.Range, List<Alignment>>> rangeAlignmentPairs;
+
+        MergedAlignmentCltn() {
+            rangeAlignmentPairs = new ArrayList<Pair<ReferenceFrame.Range, List<Alignment>>>();
+        }
+
+        void addAlignments(ReferenceFrame.Range range, List<Alignment> alignments) {
+            rangeAlignmentPairs.add(new Pair<ReferenceFrame.Range, List<Alignment>>(range, alignments));
+        }
+
+        public Iterator<Alignment> iterator() {
+            return new MAIterator();
+        }
+
+
+        // TODO -- remove duplicates (alignments spanning multiple intervals).
+        class MAIterator implements Iterator<Alignment> {
+
+            int currentIdx = 0;
+            Iterator<Alignment> currentIterator;
+            Alignment next;
+
+            MAIterator() {
+                // Prime
+                if (rangeAlignmentPairs.size() > 0) {
+                    currentIterator = rangeAlignmentPairs.get(0).getSecond().iterator();
+                    next();
+                }
+            }
+
+            @Override
+            public boolean hasNext() {
+                return next != null;
+            }
+
+            @Override
+            public Alignment next() {
+                Alignment theNext = next;
+                if (currentIterator.hasNext()) {
+                    next = currentIterator.next();
+                } else {
+                    currentIdx++;
+                    if (currentIdx < rangeAlignmentPairs.size()) {
+                        currentIterator = rangeAlignmentPairs.get(currentIdx).getSecond().iterator();
+                        next = currentIterator.next();
+                    } else {
+                        next = null;
+                    }
+                }
+                return theNext;
+            }
+
+            @Override
+            public void remove() {
+                //To change body of implemented methods use File | Settings | File Templates.
+            }
+        }
+
     }
 }
 

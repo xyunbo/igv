@@ -371,7 +371,30 @@ public class AlignmentDataManagerTest extends AbstractHeadlessTest {
      * {@link AlignmentDataManager#loadInterval(String, int, int, AlignmentTrack.RenderOptions)}
      */
     public static AlignmentInterval loadInterval(AlignmentDataManager manager, String chr, int start, int end) {
-        return manager.loadInterval(chr, start, end, new AlignmentTrack.RenderOptions());
+
+        AlignmentTrack.RenderOptions renderOptions = new AlignmentTrack.RenderOptions();
+
+        AlignmentTile t = manager.loadInterval(chr, start, end, renderOptions);
+
+        List<Alignment> alignments = t.getAlignments();
+
+        List<DownsampledInterval> downsampledIntervals = t.getDownsampledIntervals();
+
+        // Downsampling can scramble the order,  we need to sort
+        Comparator<Alignment> alignmentSorter = new Comparator<Alignment>() {
+            public int compare(Alignment alignment, Alignment alignment1) {
+                return alignment.getStart() - alignment1.getStart();
+            }
+        };
+        Collections.sort(alignments, alignmentSorter);
+
+        Iterator<Alignment> iter = alignments.iterator();
+
+        final AlignmentPacker alignmentPacker = new AlignmentPacker();
+
+        LinkedHashMap<String, List<AlignmentInterval.Row>> alignmentRows = alignmentPacker.packAlignments(iter, end, renderOptions);
+
+       return new AlignmentInterval(chr, start, end, alignmentRows, t.getCounts(), downsampledIntervals);
     }
 
 

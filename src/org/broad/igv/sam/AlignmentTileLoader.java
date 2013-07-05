@@ -84,9 +84,10 @@ public class AlignmentTileLoader {
 
     AlignmentTile loadTile(String chr, int start, int end,
                            SpliceJunctionHelper spliceJunctionHelper,
-                           AlignmentDataManager.DownsampleOptions downsampleOptions,
                            Map<String, PEStats> peStats,
                            AlignmentTrack.BisulfiteContext bisulfiteContext) {
+
+        AlignmentDataManager.DownsampleOptions downsampleOptions = new AlignmentDataManager.DownsampleOptions();
 
         AlignmentTile t = new AlignmentTile(start, end, spliceJunctionHelper, downsampleOptions, bisulfiteContext);
 
