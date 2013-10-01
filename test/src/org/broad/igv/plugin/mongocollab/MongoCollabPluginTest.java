@@ -157,7 +157,7 @@ public class MongoCollabPluginTest extends AbstractHeadlessTest {
     static void startTestMongo() throws Exception{
         String mongoExecPath = MONGO_EXEC_PATH;
         int port = getTestLocator().port;
-        String dbPath = TestUtils.TMP_OUTPUT_DIR;
+        String dbPath = (new File(TestUtils.TMP_OUTPUT_DIR)).getAbsolutePath();
         File dbDir = new File(dbPath);
         if(!dbDir.exists()){
             dbDir.mkdirs();
