@@ -43,6 +43,8 @@ import org.broad.igv.goby.GobyCountArchiveDataSource;
 import org.broad.igv.gwas.GWASData;
 import org.broad.igv.gwas.GWASParser;
 import org.broad.igv.gwas.GWASTrack;
+import org.broad.igv.hic.HiCContactTrack;
+import org.broad.igv.hic.track.HiCTrack;
 import org.broad.igv.lists.GeneList;
 import org.broad.igv.lists.GeneListManager;
 import org.broad.igv.lists.VariantListManager;
@@ -125,7 +127,11 @@ public class TrackLoader {
             LoadHandler handler = getTrackLoaderHandler(typeString);
             if (dbUrl != null) {
                 this.loadFromDatabase(locator, newTracks, genome);
-            } else if (typeString.endsWith(".dbxml")) {
+            } else if(typeString.endsWith(".hic")) {
+                loadHiCFile(locator, newTracks, genome);
+            }
+
+            else if (typeString.endsWith(".dbxml")) {
                 loadFromDBProfile(locator, newTracks);
             } else if (typeString.endsWith(".gmt")) {
                 loadGMT(locator);
@@ -381,6 +387,16 @@ public class TrackLoader {
             List<FeatureTrack> tracks = featureParser.loadTracks(locator, genome);
             newTracks.addAll(tracks);
         }
+
+    }
+
+
+    private void loadHiCFile(ResourceLocator locator, List<Track> newTracks, Genome genome) throws IOException {
+
+        String name = locator.getPath() + " Contacts";
+        Track track = new HiCContactTrack(locator, locator.getPath(), name);
+        track.setDataRange(new DataRange(0, 10));
+        newTracks.add(track);
 
     }
 
