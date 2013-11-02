@@ -384,6 +384,9 @@ public class IGVMenuBar extends JMenuBar {
             menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
         }
 
+        menuAction = new BrowseEncodeAction("Encode...", KeyEvent.VK_E, igv);
+        menuItems.add(MenuAndToolbarUtils.createMenuItem(menuAction));
+
         //Disable loading if no genome loaded. Something of an edge case
         if (!genomeLoaded) {
             for (JComponent menuItem : menuItems) {
