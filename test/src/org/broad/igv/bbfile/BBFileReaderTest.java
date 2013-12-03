@@ -28,6 +28,7 @@ public class BBFileReaderTest {
     @Test
     public void testScratch() throws Exception{
         File file = new File(".");
+        System.out.println(file.getAbsolutePath());
         for(String sf: file.list()){
             System.out.println(sf);
         }
