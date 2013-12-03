@@ -92,6 +92,15 @@
         <mkdir dir="${testtmp.dir}"/>
         <mkdir dir="${dist.dir}"/>
 
+
+        <exec executable="pwd">
+        </exec>
+
+        <exec executable="ls">
+            <arg value="-l"/>
+        </exec>
+
+
         <!-- Copy resource files to the tmp directory -->
         <copy todir="${tmp.dir}" overwrite="true">
             <fileset dir="${src.dir}">
