@@ -62,6 +62,8 @@
 
     <!-- Unzip jars to the tmp directory -->
     <target name="prepare" if="act.include.libs">
+        <exec executable="pwd">
+        </exec>
         <unzip dest="${tmp.dir}">
             <!-- Copy almost everything to tmp directory
             Certain jars we include whole, because we need their manifests
@@ -84,6 +86,8 @@
     </target>
 
     <target name="rewrite-log" if="log.level">
+        <exec executable="pwd">
+        </exec>
         <set_log_level targetFile="${tmp.dir}log4j.properties" logLevel="${log.level}"/>
     </target>
 
@@ -92,23 +96,8 @@
         <mkdir dir="${testtmp.dir}"/>
         <mkdir dir="${dist.dir}"/>
 
-
         <exec executable="pwd">
         </exec>
-
-        <exec executable="ls">
-            <arg value="-l"/>
-            <arg value="test/data"/>
-        </exec>
-
-        <exec executable="ls">
-            <arg value="-l"/>
-            <arg value="test/data/bb/chr21.refseq.bb"/>
-        </exec>
-
-        <exec executable="whoami">
-        </exec>
-
 
         <!-- Copy resource files to the tmp directory -->
         <copy todir="${tmp.dir}" overwrite="true">
@@ -139,6 +128,8 @@
     to include the main classes in the JAR and so it's easier to run
     tests later. -->
     <target name="compile" depends="init" description="Compile main source files to temp directory">
+        <exec executable="pwd">
+        </exec>
         <javac srcdir="${src.dir}" debug="on" destdir="${tmp.dir}" encoding="${java.encoding}"
                target="${javac.target}" source="${javac.target}">
             <classpath refid="@jars"/>
@@ -314,6 +305,8 @@
      would simply run IGVToolsTest.
      -->
     <target name="actruntests" depends="compileTests">
+        <exec executable="pwd">
+        </exec>
         <delete dir="${test.reports}"/>
         <mkdir dir="${test.reports}"/>
 
@@ -344,6 +337,8 @@
     </target>
 
     <target name="makereports" depends="actruntests">
+        <exec executable="pwd">
+        </exec>
         <junitreport todir="${test.reports}">
             <fileset dir="${test.reports}">
                 <include name="TEST-*.xml"/>
@@ -356,6 +351,8 @@
     <!-- Run tests without compiling source files. Primarily used
     for testing packaged jar-->
     <target name="tests_nocompile">
+        <exec executable="pwd">
+        </exec>
         <antcall target="makereports">
             <param name="filesetid" value="allfileset"/>
         </antcall>
