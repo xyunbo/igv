@@ -106,6 +106,9 @@
             <arg value="test/data/bb/chr21.refseq.bb"/>
         </exec>
 
+        <exec executable="whoami">
+        </exec>
+
 
         <!-- Copy resource files to the tmp directory -->
         <copy todir="${tmp.dir}" overwrite="true">
