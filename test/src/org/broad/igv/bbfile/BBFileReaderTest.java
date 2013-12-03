@@ -14,6 +14,7 @@ package org.broad.igv.bbfile;
 import org.broad.igv.util.TestUtils;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 
 import static org.junit.Assert.*;
@@ -23,6 +24,14 @@ import static org.junit.Assert.*;
  * @date Jun 19, 2011
  */
 public class BBFileReaderTest {
+
+    @Test
+    public void testScratch() throws Exception{
+        File file = new File(".");
+        for(String sf: file.list()){
+            System.out.println(sf);
+        }
+    }
 
 
     @Test
