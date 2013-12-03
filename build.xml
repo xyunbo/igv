@@ -98,6 +98,12 @@
 
         <exec executable="ls">
             <arg value="-l"/>
+            <arg value="test/data"/>
+        </exec>
+
+        <exec executable="ls">
+            <arg value="-l"/>
+            <arg value="test/data/bb/chr21.refseq.bb"/>
         </exec>
 
 
